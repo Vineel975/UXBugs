@@ -1,3 +1,4 @@
-
-[ClaimAI] ICD code for coding row: H25.11 (doctor selected)
-Index:16777 [ClaimAI] setIcdSlots: procID=496 icd=H25.11 eligible=20000 package=52000
+-- Does H25.11 exist and what's its ID?
+SELECT ID, DiseaseCode, Name, Level FROM ICD10 
+WHERE DiseaseCode LIKE 'H25%' AND Deleted=0
+ORDER BY Level DESC
