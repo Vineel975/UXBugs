@@ -8898,10 +8898,15 @@
                     var packageAmt2    = event.data.packageAmount   || 0;
 
                     // Most specific ICD code = last non-null slot
-                    var lastIcdCode2 = '';
-                    for (var si2 = icdSlots2.length - 1; si2 >= 0; si2--) {
-                        if (icdSlots2[si2] && icdSlots2[si2].code) { lastIcdCode2 = icdSlots2[si2].code; break; }
+                    // Use doctor-selected ICD code from Diagnosis-Linked tab if provided
+                    // Otherwise fall back to last populated slot from API lookup
+                    var lastIcdCode2 = event.data.lastIcdCode || '';
+                    if (!lastIcdCode2) {
+                        for (var si2 = icdSlots2.length - 1; si2 >= 0; si2--) {
+                            if (icdSlots2[si2] && icdSlots2[si2].code) { lastIcdCode2 = icdSlots2[si2].code; break; }
+                        }
                     }
+                    console.log('[ClaimAI] ICD code for coding row:', lastIcdCode2, event.data.lastIcdCode ? '(doctor selected)' : '(from API)');
 
                     // Match procedure from TPA master using exact Level3 names from DB
                     var procID2 = null;
