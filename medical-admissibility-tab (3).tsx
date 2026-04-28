@@ -578,7 +578,6 @@ export function MedicalAdmissibilityTab({
               {/* Diagnosis + Supporting Report 2-column table — replaces plain Diagnosis text */}
               {(medicalAdmissibility.diagnosis || conditionRows.length > 0) && (
                 <div className="space-y-2">
-                  <div className="text-sm font-semibold text-gray-700">Diagnosis</div>
                   <div className="rounded-md border bg-white">
                     <Table>
                       <TableHeader>
