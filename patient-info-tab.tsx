@@ -88,7 +88,7 @@ type DbGroupId =
   | "patientEnrolled"
   | "other";
 
-const DB_GROUP_ORDER: Array<{ id: DbGroupId; title: string }> = [
+const DB_GROUP_ORDER: Array<{ id: DbGroupId; title: string; highlight?: boolean }> = [
   { id: "insurerBenefits", title: "InsurerBenefits" },
   {
     id: "ucrPastHistory",
