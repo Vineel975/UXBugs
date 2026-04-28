@@ -150,6 +150,15 @@ export function ResultView({
     hospital: 0,
     tariff: 0,
   });
+  // Per-page rotation state: key = "{fileType}-{pageIndex}", value = 0|90|180|270
+  const [pageRotations, setPageRotations] = useState<Record<string, number>>({});
+  const rotatePage = (fileType: string, pageIndex: number, direction: "cw" | "ccw") => {
+    const key = `${fileType}-${pageIndex}`;
+    setPageRotations((prev) => ({
+      ...prev,
+      [key]: ((prev[key] ?? 0) + (direction === "cw" ? 90 : -90) + 360) % 360,
+    }));
+  };
   const reportSections = useMemo(
     () => [
       { id: "patient", label: "Patient Info" },
@@ -1374,6 +1383,8 @@ export function ResultView({
             pdfWidth={pdfWidth}
             pdfError={pdfError}
             showSampleData={showSampleData}
+            pageRotations={pageRotations}
+            onRotatePage={rotatePage}
           />
         </ResizablePanel>
       </ResizablePanelGroup>
