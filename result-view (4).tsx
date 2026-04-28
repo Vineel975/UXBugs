@@ -1196,6 +1196,8 @@ export function ResultView({
                     fileName={fileName}
                     medicalAdmissibility={displayAnalysis?.medicalAdmissibility}
                     onScrollToPage={handleScrollToPage}
+                    presentingComplaint={presentingComplaint}
+                    onPresentingComplaintChange={setPresentingComplaint}
                   />
                 </section>
                 <section id="financialSummary" className="py-2">
@@ -1233,18 +1235,7 @@ export function ResultView({
                     }
                   />
                 </section>
-                <div className="mt-4 space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Presenting Complaint
-                  </label>
-                  <textarea
-                    value={presentingComplaint}
-                    onChange={(e) => setPresentingComplaint(e.target.value)}
-                    placeholder="Enter presenting complaint..."
-                    rows={3}
-                    className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 resize-none"
-                  />
-                </div>
+
                 <div className="mt-4 space-y-2">
                   <label className="text-sm font-medium text-gray-700">
                     Processing Remarks
@@ -1259,7 +1250,7 @@ export function ResultView({
                 </div>
                 <div className="mt-4 space-y-2">
                   <label className="text-sm font-medium text-gray-700">
-                    Doctor Notes
+                    Processing Doctor Notes
                   </label>
                   <textarea
                     value={doctorNotes}
