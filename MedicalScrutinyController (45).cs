@@ -8966,7 +8966,12 @@ namespace Enrollment.Controllers
                         rowsAffected = cmd.ExecuteNonQuery();
                     }
                 }
-                catch (Exception ex) { lastError = ex.Message; }
+                catch (Exception ex)
+                {
+                    lastError = ex.Message;
+                    Elmah.ErrorLog.GetDefault(null).Log(new Elmah.Error(ex));
+                    return Json(new { success = false, rowsAffected = 0, error = lastError });
+                }
 
                 return Json(new { success = rowsAffected > 0, rowsAffected = rowsAffected });
             }
