@@ -7943,6 +7943,13 @@
                         console.log('[ClaimAI] FacilityRestore set:', facFields.approvedFacilityId);
                     }
                 }
+                if (facFields.patientConditionId && facFields.patientConditionId !== '0') {
+                    var $pcDdl = $('#ddlPatientCondition');
+                    if ($pcDdl.find('option[value="' + facFields.patientConditionId + '"]').length > 0) {
+                        $pcDdl.val(facFields.patientConditionId).trigger('change');
+                        console.log('[ClaimAI] PatientCondition restored:', facFields.patientConditionId);
+                    }
+                }
             }
         } catch(e) {
             console.warn('[ClaimAI] ApprovedFacility restore failed:', e);
