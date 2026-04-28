@@ -1,3 +1,12 @@
-ExcessPaidByPatient
-MillimanConditionID
-PaidByPatient
+-- First check what's there
+SELECT ID, ClaimID, Slno, TPAProcedureID, ICDCode, BillingType_P51, CreatedDatetime
+FROM ClaimsCoding
+WHERE ClaimID = 26041406226
+AND ISNULL(Deleted,0) = 0
+ORDER BY CreatedDatetime DESC
+
+-- Then soft delete (preferred — matches Spectra's pattern)
+UPDATE ClaimsCoding 
+SET Deleted = 1, DeletedDatetime = GETDATE(), DeletedUserRegionID = 1
+WHERE ClaimID = 26041406226
+AND ISNULL(Deleted,0) = 0
