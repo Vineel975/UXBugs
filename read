@@ -1,4 +1,41 @@
--- Does H25.11 exist and what's its ID?
-SELECT ID, DiseaseCode, Name, Level FROM ICD10 
-WHERE DiseaseCode LIKE 'H25%' AND Deleted=0
-ORDER BY Level DESC
+40573	H25.011	Cortical age-related cataract, right eye	6
+40574	H25.012	Cortical age-related cataract, left eye	6
+40575	H25.013	Cortical age-related cataract, bilateral	6
+40576	H25.019	Cortical age-related cataract, unspecified eye	6
+40577	H25.031	Anterior subcapsular polar age-related cataract, right eye	6
+40578	H25.032	Anterior subcapsular polar age-related cataract, left eye	6
+40579	H25.033	Anterior subcapsular polar age-related cataract, bilateral	6
+40580	H25.039	Anterior subcapsular polar age-related cataract, unspecified eye	6
+40581	H25.041	Posterior subcapsular polar age-related cataract, right eye	6
+40582	H25.042	Posterior subcapsular polar age-related cataract, left eye	6
+40583	H25.043	Posterior subcapsular polar age-related cataract, bilateral	6
+40584	H25.049	Posterior subcapsular polar age-related cataract, unspecified eye	6
+40585	H25.091	Other age-related incipient cataract, right eye	6
+40586	H25.092	Other age-related incipient cataract, left eye	6
+40587	H25.093	Other age-related incipient cataract, bilateral	6
+40588	H25.099	Other age-related incipient cataract, unspecified eye	6
+40589	H25.811	Combined forms of age-related cataract, right eye	6
+40590	H25.812	Combined forms of age-related cataract, left eye	6
+40591	H25.813	Combined forms of age-related cataract, bilateral	6
+40592	H25.819	Combined forms of age-related cataract, unspecified eye	6
+28139	H25.01	Cortical age-related cataract	5
+28140	H25.03	Anterior subcapsular polar age-related cataract	5
+28141	H25.04	Posterior subcapsular polar age-related cataract	5
+28142	H25.09	Other age-related incipient cataract	5
+28143	H25.10	Age-related nuclear cataract, unspecified eye	5
+28144	H25.11	Age-related nuclear cataract, right eye	5
+28145	H25.12	Age-related nuclear cataract, left eye	5
+28146	H25.13	Age-related nuclear cataract, bilateral	5
+28147	H25.20	Age-related cataract, morgagnian type, unspecified eye	5
+28148	H25.21	Age-related cataract, morgagnian type, right eye	5
+28149	H25.22	Age-related cataract, morgagnian type, left eye	5
+28150	H25.23	Age-related cataract, morgagnian type, bilateral	5
+28151	H25.81	Combined forms of age-related cataract	5
+28152	H25.89	Other age-related cataract	5
+18150	H25.0	Age-related incipient cataract	4
+18151	H25.1	Age-related nuclear cataract	4
+18152	H25.2	Age-related cataract, morgagnian type	4
+18153	H25.8	Other age-related cataract	4
+18154	H25.9	Unspecified age-related cataract	4
+13323	H25	Senile cataract	3
+12394	H25-H28	Disorders of lens	2
