@@ -1911,7 +1911,7 @@ export function PatientInfoTab({
         {/* Document Checklist Section */}
         <div className="mt-6">
           <Label className="mb-3 block text-sm font-medium text-muted-foreground">
-            Document Checklist
+            Document Checklist (Based on Availability)
           </Label>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             {checklistItems.map((item) => {
