@@ -1,22 +1,6 @@
-ID	bigint
-MemberSIID	bigint
-MainmemberID	bigint
-MemberPolicyID	bigint
-ClaimID	bigint
-Slno	tinyint
-PropertyValueID	int
-Serviceid	int
-InsurerAilmentID	int
-InsurerPCSID	int
-Utilized	money
-Approved	money
-Blocked	money
-BalanceSI	money
-ClosedDate	datetime
-Deleted	bit
-CreatedBy	int
-CreatedDateTime	datetime
-ModifiedBy	int
-ModifiedDateTime	datetime
-DeletedBy	int
-DeletedDatetime	datetime
+SELECT mu.ClaimID, mu.Utilized, mu.Approved, mu.Blocked, ms.BPSIID
+FROM MemberUtilization mu
+JOIN MemberSI ms ON ms.ID = mu.MemberSIID
+JOIN Claims c ON c.MemberPolicyID = ms.MemberPolicyID
+WHERE c.ID = 26041406226
+AND ISNULL(mu.Deleted,0) = 0
