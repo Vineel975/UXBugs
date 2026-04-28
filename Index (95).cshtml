@@ -8758,6 +8758,13 @@
                             success: function (res) {
                                 console.log('[ClaimAI] SaveClinicalDetailsForClaimAI response:', JSON.stringify(res));
                                 if (res && res.success) {
+                                    // Set Patient Condition dropdown to "Recovered" (ID=269)
+                                    var $pcDdl = $('#ddlPatientCondition');
+                                    if ($pcDdl.length && $pcDdl.find('option[value="269"]').length > 0) {
+                                        $pcDdl.val('269').trigger('change');
+                                        console.log('[ClaimAI] PatientCondition set to Recovered (269)');
+                                    }
+
                                     // Update txtDoctorRemarks in DOM if Notes tab is open
                                     if (window._claimAI_doctorNotes && $('#txtDoctorRemarks').length) {
                                         $('#txtDoctorRemarks').val(window._claimAI_doctorNotes);
