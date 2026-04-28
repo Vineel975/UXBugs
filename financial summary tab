@@ -556,22 +556,26 @@ export function FinancialSummaryTab({
                 Benefit extraction {onBenefitExtractionClick && <span className="text-xs text-blue-500 normal-case">↗ View Benefit Plan</span>}
               </div>
               {alignmentCappings.length > 0 && (() => {
-                // Filter to only show points related to current diagnosis
+                // Filter to only show points matching the current diagnosis
+                // alignmentCappings entries are like "Cataract: ₹50,000 limit"
+                // diagnosis is like "Cataract RE, IMSC, BE - IMSC"
                 const diagLower = (diagnosis ?? "").toLowerCase();
-                const filtered = diagLower
-                  ? alignmentCappings.filter((cap) => {
-                      const condName = cap.split(":")[0].toLowerCase();
-                      // Match if condition name appears in diagnosis or diagnosis appears in condition name
-                      return (
-                        diagLower.includes(condName) ||
-                        condName.split(/\s+/).some((word) => word.length > 3 && diagLower.includes(word))
-                      );
-                    })
-                  : alignmentCappings;
-                const toShow = filtered.length > 0 ? filtered : alignmentCappings;
+
+                const filtered = alignmentCappings.filter((cap) => {
+                  // Extract condition name (part before first colon)
+                  const condName = cap.split(":")[0].trim().toLowerCase();
+                  if (!condName) return false;
+                  // Each word in condition name must appear in diagnosis
+                  const condWords = condName.split(/\s+/).filter((w) => w.length > 2);
+                  return condWords.every((word) => diagLower.includes(word));
+                });
+
+                // Show filtered results — if nothing matches, show nothing (don't fallback to all)
+                if (filtered.length === 0) return null;
+
                 return (
                   <ul className="space-y-1 list-disc list-inside">
-                    {toShow.map((cap, i) => {
+                    {filtered.map((cap, i) => {
                       const colonIdx = cap.indexOf(": ");
                       const text = colonIdx !== -1 ? cap.slice(colonIdx + 2) : cap;
                       return (
@@ -589,11 +593,10 @@ export function FinancialSummaryTab({
           {/* Balance Sum Insured */}
           <Card className="border-2 border-slate-300 bg-slate-50">
             <CardContent className="pt-4">
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3">
                 <div className="text-sm font-semibold uppercase tracking-wide text-slate-700">
                   Balance Sum Insured
                 </div>
-                <div className="text-[10px] font-medium text-slate-400">Live · McarePlus DB</div>
               </div>
 
               {bsiLoading && (
