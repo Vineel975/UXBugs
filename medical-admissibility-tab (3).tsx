@@ -58,7 +58,8 @@ type ConditionRow = {
   reported: "Yes" | "No";
   icdCode?: string;
   pageNumber?: number;
-  conditionKey?: string; // Added to identify which condition this row belongs to
+  conditionKey?: string;
+  matchedDiagnosis?: string;
 };
 
 function inferDefaultCataractIcdCode(
