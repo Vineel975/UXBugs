@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -150,15 +150,73 @@ export function ResultView({
     hospital: 0,
     tariff: 0,
   });
-  // Per-page rotation state: key = "{fileType}-{pageIndex}", value = 0|90|180|270
-  const [pageRotations, setPageRotations] = useState<Record<string, number>>({});
-  const rotatePage = (fileType: string, pageIndex: number, direction: "cw" | "ccw") => {
-    const key = `${fileType}-${pageIndex}`;
+  // Per-page rotation state: key = pageIndex, value = 0|90|180|270
+  const [pageRotations, setPageRotations] = useState<Record<number, number>>({});
+  const rotatePage = useCallback((pageIndex: number, direction: "cw" | "ccw") => {
     setPageRotations((prev) => ({
       ...prev,
-      [key]: ((prev[key] ?? 0) + (direction === "cw" ? 90 : -90) + 360) % 360,
+      [pageIndex]: ((prev[pageIndex] ?? 0) + (direction === "cw" ? 90 : -90) + 360) % 360,
     }));
-  };
+  }, []);
+
+  // Inject rotation buttons onto each react-pdf Page via DOM observation
+  useEffect(() => {
+    const container = pdfContainerRef.current;
+    if (!container) return;
+
+    const addButtons = () => {
+      const pages = container.querySelectorAll<HTMLElement>(".react-pdf__Page");
+      pages.forEach((page, idx) => {
+        if (page.querySelector(".claimai-rotate-btn")) return; // already added
+        const wrapper = document.createElement("div");
+        wrapper.className = "claimai-rotate-btn";
+        wrapper.style.cssText = "position:absolute;top:6px;right:6px;z-index:10;display:flex;gap:4px;opacity:0;transition:opacity .15s;pointer-events:none;";
+        page.style.position = "relative";
+
+        const pageLabel = document.createElement("span");
+        pageLabel.textContent = `P${idx + 1}`;
+        pageLabel.style.cssText = "background:rgba(0,0,0,.5);color:#fff;font-size:10px;border-radius:3px;padding:2px 5px;display:flex;align-items:center;";
+        wrapper.appendChild(pageLabel);
+
+        const makBtn = (label: string, dir: "cw" | "ccw") => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.title = dir === "cw" ? "Rotate clockwise" : "Rotate counter-clockwise";
+          btn.innerHTML = dir === "cw"
+            ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.55"/></svg>`
+            : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.49-4.55"/></svg>`;
+          btn.style.cssText = "background:rgba(0,0,0,.5);border:none;border-radius:3px;padding:3px;cursor:pointer;display:flex;align-items:center;justify-content:center;";
+          btn.addEventListener("click", (e) => { e.stopPropagation(); rotatePage(idx, dir); });
+          return btn;
+        };
+        wrapper.appendChild(makBtn("↺", "ccw"));
+        wrapper.appendChild(makBtn("↻", "cw"));
+
+        page.appendChild(wrapper);
+        page.addEventListener("mouseenter", () => { wrapper.style.opacity = "1"; wrapper.style.pointerEvents = "auto"; });
+        page.addEventListener("mouseleave", () => { wrapper.style.opacity = "0"; wrapper.style.pointerEvents = "none"; });
+      });
+    };
+
+    // Apply CSS rotation to pages based on state
+    const applyRotations = () => {
+      const pages = container.querySelectorAll<HTMLElement>(".react-pdf__Page");
+      pages.forEach((page, idx) => {
+        const rotation = pageRotations[idx] ?? 0;
+        const canvas = page.querySelector<HTMLElement>("canvas");
+        if (canvas) canvas.style.transform = `rotate(${rotation}deg)`;
+        const inner = page.querySelector<HTMLElement>(".react-pdf__Page__canvas");
+        if (inner) inner.style.transform = `rotate(${rotation}deg)`;
+      });
+    };
+
+    const observer = new MutationObserver(() => { addButtons(); applyRotations(); });
+    observer.observe(container, { childList: true, subtree: true });
+    addButtons();
+    applyRotations();
+
+    return () => observer.disconnect();
+  }, [pdfContainerRef, rotatePage, pageRotations, activePdfFile]);
   const reportSections = useMemo(
     () => [
       { id: "patient", label: "Patient Info" },
@@ -1374,7 +1432,7 @@ export function ResultView({
             hospitalBill={hospitalBill}
             tariffFile={tariffFile}
             claimId={state?.claimId}
-            pdfContainerRef={pdfContainerRef as React.RefObject<HTMLDivElement>}
+            pdfContainerRef={pdfContainerRef}
             onPdfWidthChange={handlePdfWidthChange}
             pdfPages={pdfPages}
             setPdfPages={setPdfPages}
@@ -1383,8 +1441,7 @@ export function ResultView({
             pdfWidth={pdfWidth}
             pdfError={pdfError}
             showSampleData={showSampleData}
-            pageRotations={pageRotations}
-            onRotatePage={rotatePage}
+
           />
         </ResizablePanel>
       </ResizablePanelGroup>
