@@ -1,5 +1,3 @@
-SELECT ID, Name FROM Mst_PropertyValue 
-WHERE PropertyID IN (
-    SELECT ID FROM Mst_Property WHERE Name LIKE '%Patient Condition%'
-)
-ORDER BY ID
+SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+WHERE TABLE_NAME = 'Claimsdetails' 
+AND (COLUMN_NAME LIKE '%Patient%' OR COLUMN_NAME LIKE '%Condition%')
