@@ -27,6 +27,8 @@ interface MedicalAdmissibilityTabProps {
   fileName: string;
   medicalAdmissibility?: PdfAnalysis["medicalAdmissibility"] | null;
   onScrollToPage?: (pageNumber: number) => void;
+  presentingComplaint?: string;
+  onPresentingComplaintChange?: (value: string) => void;
 }
 
 type ConditionKey = string;
@@ -428,6 +430,8 @@ export function MedicalAdmissibilityTab({
   fileName,
   medicalAdmissibility,
   onScrollToPage,
+  presentingComplaint,
+  onPresentingComplaintChange,
 }: MedicalAdmissibilityTabProps) {
   const [icdCodeMap, setIcdCodeMap] = useState<Map<string, string>>(new Map());
   // 7 levels of ICD codes per condition key
@@ -628,7 +632,7 @@ export function MedicalAdmissibilityTab({
               {medicalAdmissibility.doctorNotes && (
                 <div className="space-y-2">
                   <div className="text-sm font-semibold text-gray-700">
-                    Doctor Notes
+                    Doctor Notes From Hospital
                   </div>
                   <div
                     className={`text-sm text-gray-900 bg-gray-50 rounded-md p-3 border whitespace-pre-wrap ${
@@ -652,6 +656,20 @@ export function MedicalAdmissibilityTab({
                   </div>
                 </div>
               )}
+              {/* Presenting Complaint — moved here from result-view bottom */}
+              {(presentingComplaint !== undefined) && (
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold text-gray-700">Presenting Complaint</div>
+                  <textarea
+                    value={presentingComplaint ?? ""}
+                    onChange={(e) => onPresentingComplaintChange?.(e.target.value)}
+                    placeholder="Enter presenting complaint..."
+                    rows={3}
+                    className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 resize-none"
+                  />
+                </div>
+              )}
+
               {conditionRows.length > 0 && (
                 <div className="space-y-2">
                   <div className="text-sm font-semibold text-gray-700">
