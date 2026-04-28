@@ -45,6 +45,8 @@ interface FinancialSummaryTabProps {
   onAmountsChange?: (claimedAmount: number | null, tariffAmount: number | null, approvedAmount: number | null) => void;
   /** Called when user clicks Benefit extraction section — opens Benefit Plan tab on right */
   onBenefitExtractionClick?: () => void;
+  /** Current diagnosis text — used to filter benefit extraction points */
+  diagnosis?: string | null;
 }
 
 export function FinancialSummaryTab({
@@ -70,6 +72,7 @@ export function FinancialSummaryTab({
   memberPolicyId,
   onAmountsChange,
   onBenefitExtractionClick,
+  diagnosis,
 }: FinancialSummaryTabProps) {
 
   // ── BSI state — fetched client-side via /api/bsi (runs on localhost:3000) ──
@@ -552,20 +555,34 @@ export function FinancialSummaryTab({
               >
                 Benefit extraction {onBenefitExtractionClick && <span className="text-xs text-blue-500 normal-case">↗ View Benefit Plan</span>}
               </div>
-              {alignmentCappings.length > 0 && (
-                <ul className="space-y-1 list-disc list-inside">
-                  {alignmentCappings.map((cap, i) => {
-                    // Strip "ConditionName: " prefix if present
-                    const colonIdx = cap.indexOf(": ");
-                    const text = colonIdx !== -1 ? cap.slice(colonIdx + 2) : cap;
-                    return (
-                      <li key={i} className="text-sm text-gray-800">
-                        {text}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+              {alignmentCappings.length > 0 && (() => {
+                // Filter to only show points related to current diagnosis
+                const diagLower = (diagnosis ?? "").toLowerCase();
+                const filtered = diagLower
+                  ? alignmentCappings.filter((cap) => {
+                      const condName = cap.split(":")[0].toLowerCase();
+                      // Match if condition name appears in diagnosis or diagnosis appears in condition name
+                      return (
+                        diagLower.includes(condName) ||
+                        condName.split(/\s+/).some((word) => word.length > 3 && diagLower.includes(word))
+                      );
+                    })
+                  : alignmentCappings;
+                const toShow = filtered.length > 0 ? filtered : alignmentCappings;
+                return (
+                  <ul className="space-y-1 list-disc list-inside">
+                    {toShow.map((cap, i) => {
+                      const colonIdx = cap.indexOf(": ");
+                      const text = colonIdx !== -1 ? cap.slice(colonIdx + 2) : cap;
+                      return (
+                        <li key={i} className="text-sm text-gray-800">
+                          {text}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                );
+              })()}
             </CardContent>
           </Card>
 
