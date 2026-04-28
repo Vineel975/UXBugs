@@ -1204,6 +1204,7 @@ export function ResultView({
                     claimCalculation={claimCalculation}
                     financialSummaryTotals={financialSummaryTotals}
                     onBenefitExtractionClick={() => setActivePdfFile("benefitPlan")}
+                    diagnosis={selectedAnalysis?.medicalAdmissibility?.diagnosis ?? null}
                     finalInsurerPayable={finalInsurerPayable}
                     finalInsurerPayableNotes={finalInsurerPayableNotes}
                     formatAmountValue={formatAmountValue}
