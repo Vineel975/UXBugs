@@ -8835,7 +8835,8 @@ namespace Enrollment.Controllers
             string processingRemarks,
             string doctorNotes,
             string hospTreatmentTypeId,
-            string approvedFacilityId = null)
+            string approvedFacilityId = null,
+            string patientConditionId = null)
         {
             try
             {
@@ -8945,6 +8946,14 @@ namespace Enrollment.Controllers
                                 cmd.Parameters.AddWithValue("@ApprovedFacilityID", facilityIdLong);
                             }
                         }
+
+                        // Always set PatientConditionID = 269 (Recovered) when saving from ClaimAI
+                        // Can be overridden by passing a specific patientConditionId
+                        int patientConditionIdInt = 269; // 269 = Recovered
+                        if (!string.IsNullOrWhiteSpace(patientConditionId))
+                            int.TryParse(patientConditionId.Trim(), out patientConditionIdInt);
+                        setClauses.Add("PatientConditionID = @PatientConditionID");
+                        cmd.Parameters.AddWithValue("@PatientConditionID", patientConditionIdInt);
 
                         if (setClauses.Count == 0)
                             return Json(new { success = true, message = "Nothing to update" });
@@ -9206,12 +9215,13 @@ namespace Enrollment.Controllers
                 // Doctor Notes + ApprovedFacilityID from Claimsdetails
                 string doctorNotes = null;
                 string approvedFacilityId = null;
+                string patientConditionId = null;
                 using (var conn2 = new System.Data.SqlClient.SqlConnection(connStr))
                 {
                     conn2.Open();
                     using (var cmd = conn2.CreateCommand())
                     {
-                        cmd.CommandText = @"SELECT TOP 1 DoctorNotes, ApprovedFacilityID
+                        cmd.CommandText = @"SELECT TOP 1 DoctorNotes, ApprovedFacilityID, PatientConditionID
                                             FROM Claimsdetails
                                             WHERE ClaimID = @ClaimID AND ISNULL(Deleted,0) = 0
                                             ORDER BY SlNo DESC";
@@ -9224,6 +9234,8 @@ namespace Enrollment.Controllers
                                     doctorNotes = reader["DoctorNotes"].ToString().Trim();
                                 if (reader["ApprovedFacilityID"] != DBNull.Value)
                                     approvedFacilityId = reader["ApprovedFacilityID"].ToString().Trim();
+                                if (reader["PatientConditionID"] != DBNull.Value)
+                                    patientConditionId = reader["PatientConditionID"].ToString().Trim();
                             }
                         }
                     }
@@ -9235,7 +9247,8 @@ namespace Enrollment.Controllers
                     documentDate      = documentDate,
                     dischargeDate     = dischargeDate,
                     doctorNotes       = doctorNotes,
-                    approvedFacilityId = approvedFacilityId
+                    approvedFacilityId  = approvedFacilityId,
+                    patientConditionId  = patientConditionId
                 }, JsonRequestBehavior.AllowGet);
             }
             catch (Exception ex)
