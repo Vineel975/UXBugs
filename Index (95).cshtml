@@ -7924,9 +7924,9 @@
 
     BindDropdown(MasterData.mFacility, "ddlApprovedFacility");
 
-    // Restore ApprovedFacilityID from DB — use setTimeout to run AFTER all BindDropdown
-    // and ddlReceivedAccomodation.change() events have fired
-    setTimeout(function() {
+    // Restore ApprovedFacilityID + PatientConditionID from DB
+    // Run at 500ms AND 2500ms to ensure we override Spectra's own page-load binding
+    function claimAI_restoreFields() {
         try {
             var claimIdForFac = $('#hdnClaimID').val();
             if (!claimIdForFac) return;
@@ -7944,17 +7944,21 @@
                     }
                 }
                 if (facFields.patientConditionId && facFields.patientConditionId !== '0') {
+                    window._claimAI_patientConditionId = facFields.patientConditionId;
                     var $pcDdl = $('#ddlPatientCondition');
                     if ($pcDdl.find('option[value="' + facFields.patientConditionId + '"]').length > 0) {
-                        $pcDdl.val(facFields.patientConditionId).trigger('change');
+                        $pcDdl.val(facFields.patientConditionId);
                         console.log('[ClaimAI] PatientCondition restored:', facFields.patientConditionId);
                     }
                 }
             }
         } catch(e) {
-            console.warn('[ClaimAI] ApprovedFacility restore failed:', e);
+            console.warn('[ClaimAI] Field restore failed:', e);
         }
-    }, 500);
+    }
+    // Run twice — once early, once late — to override any Spectra binding that runs after us
+    setTimeout(claimAI_restoreFields, 500);
+    setTimeout(claimAI_restoreFields, 2500);
 
     BindDropdown(MasterData.mAdmissionType, "ddlAdmissionType");
     BindDropdown(MasterData.mAnesthesiaType, "ddlTypeOfAnesthitia");
