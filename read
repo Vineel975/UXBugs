@@ -1,1 +1,4 @@
-[ClaimAI] SaveClinicalDetailsForClaimAI response: {"success":false,"rowsAffected":0,"error":"Invalid column name 'PatientConditionID'."
+SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+WHERE TABLE_NAME = 'Claimsdetails' 
+AND (COLUMN_NAME LIKE '%Patient%' OR COLUMN_NAME LIKE '%Condition%' OR COLUMN_NAME LIKE '%P269%')
+ORDER BY COLUMN_NAME
