@@ -158,39 +158,46 @@ async function fetchICDOptions(condition: string): Promise<IcdOption[]> {
 }
 
 // ── Searchable ICD Combobox ─────────────────────────────────────────────────
+// ── ICD Inline Search Input ────────────────────────────────────────────────
+// Replaces the small dropdown combobox with a clean inline search experience.
+// Shows code + description in a single input, opens a floating result list.
 function IcdCombobox({
   value,
   onChange,
-  placeholder = "Search ICD…",
+  placeholder = "Search code or name…",
+  levelLabel,
 }: {
   value: string;
   onChange: (code: string, description: string) => void;
   placeholder?: string;
+  levelLabel?: string;
 }) {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<IcdOption[]>([]);
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [query, setQuery]       = useState("");
+  const [results, setResults]   = useState<IcdOption[]>([]);
+  const [open, setOpen]         = useState(false);
+  const [loading, setLoading]   = useState(false);
+  const [desc, setDesc]         = useState("");
+  const [focused, setFocused]   = useState(false);
+  const debounceRef             = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapperRef              = useRef<HTMLDivElement>(null);
+  const inputRef                = useRef<HTMLInputElement>(null);
 
-  // Selected label
-  const [selectedLabel, setSelectedLabel] = useState(value);
+  // Fetch description for existing value
   useEffect(() => {
     if (value) {
-      fetchICDDescription(value).then((desc) => {
-        setSelectedLabel(desc ? `${value} — ${desc}` : value);
-      });
+      fetchICDDescription(value).then((d) => setDesc(d ?? ""));
     } else {
-      setSelectedLabel("");
+      setDesc("");
     }
   }, [value]);
 
-  // Click outside to close
+  // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node))
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         setOpen(false);
+        setFocused(false);
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -199,72 +206,111 @@ function IcdCombobox({
   const handleSearch = (q: string) => {
     setQuery(q);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!q.trim()) { setResults([]); return; }
+    if (!q.trim()) { setResults([]); setOpen(false); return; }
     setLoading(true);
+    setOpen(true);
     debounceRef.current = setTimeout(async () => {
       const res = await searchIcdCodes(q);
       setResults(res);
       setLoading(false);
-    }, 250);
+    }, 200);
   };
 
   const handleSelect = (opt: IcdOption) => {
     onChange(opt.code, opt.description);
-    setSelectedLabel(`${opt.code} — ${opt.description}`);
+    setDesc(opt.description);
     setQuery("");
     setResults([]);
     setOpen(false);
+    setFocused(false);
   };
 
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onChange("", "");
+    setDesc("");
+    setQuery("");
+    setResults([]);
+  };
+
+  const displayValue = focused ? query : (value ? `${value}` : "");
+
   return (
-    <div ref={wrapperRef} className="relative w-full min-w-[160px]">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between rounded-md border border-input bg-background px-2 py-1 text-left text-xs hover:bg-muted h-8 gap-1"
-      >
-        <span className="truncate text-xs font-mono text-blue-700 font-medium flex-1">
-          {value || <span className="text-muted-foreground font-normal">{placeholder}</span>}
-        </span>
-        <svg className="h-3 w-3 shrink-0 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
+    <div ref={wrapperRef} className="relative w-full">
+      {/* Level badge */}
+      {levelLabel && (
+        <div className="mb-0.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+          {levelLabel}
+        </div>
+      )}
+
+      {/* Input row */}
+      <div className={`flex items-center rounded-md border ${focused ? "border-blue-400 ring-1 ring-blue-400/30" : value ? "border-blue-200 bg-blue-50" : "border-gray-200 bg-white"} transition-all`}>
+        <input
+          ref={inputRef}
+          type="text"
+          value={displayValue}
+          onChange={(e) => handleSearch(e.target.value)}
+          onFocus={() => { setFocused(true); setQuery(""); }}
+          onBlur={() => { if (!open) setFocused(false); }}
+          placeholder={placeholder}
+          className="min-w-0 flex-1 bg-transparent px-2 py-1.5 text-xs outline-none placeholder:text-gray-300"
+        />
+        {value && !focused && (
+          <button
+            type="button"
+            onClick={handleClear}
+            title="Clear"
+            className="shrink-0 px-1.5 text-gray-300 hover:text-red-400 transition-colors"
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {/* Description shown below when value is set and not focused */}
+      {value && !focused && desc && (
+        <div className="mt-0.5 truncate text-[10px] text-blue-600 leading-tight" title={desc}>
+          {desc}
+        </div>
+      )}
+
+      {/* Floating results dropdown */}
       {open && (
-        <div className="absolute z-50 mt-1 w-80 rounded-md border border-border bg-background shadow-lg">
-          <div className="p-2 border-b border-border">
-            <input
-              autoFocus
-              type="text"
-              value={query}
-              onChange={(e) => handleSearch(e.target.value)}
-              placeholder="Type code or disease name…"
-              className="w-full rounded border border-input px-2 py-1 text-xs outline-none focus:border-ring"
-            />
+        <div className="absolute left-0 z-[100] mt-1 w-[340px] rounded-lg border border-gray-200 bg-white shadow-xl">
+          <div className="border-b border-gray-100 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+            ICD-10 Results
           </div>
-          <div className="max-h-56 overflow-y-auto">
+          <div className="max-h-52 overflow-y-auto">
             {loading && (
-              <div className="px-3 py-2 text-xs text-muted-foreground">Searching…</div>
-            )}
-            {!loading && results.length === 0 && query && (
-              <div className="px-3 py-2 text-xs text-muted-foreground">No results for "{query}"</div>
-            )}
-            {!loading && results.length === 0 && !query && value && (
-              <div className="px-3 py-2 text-xs text-muted-foreground">
-                Current: <span className="font-mono text-blue-700">{value}</span>
+              <div className="flex items-center gap-2 px-3 py-3 text-xs text-gray-400">
+                <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                </svg>
+                Searching…
               </div>
             )}
-            {results.map((opt) => (
+            {!loading && results.length === 0 && query && (
+              <div className="px-3 py-3 text-xs text-gray-400">No results for &ldquo;{query}&rdquo;</div>
+            )}
+            {!loading && results.map((opt, i) => (
               <button
                 key={opt.code}
                 type="button"
+                onMouseDown={(e) => e.preventDefault()} // prevent blur before click
                 onClick={() => handleSelect(opt)}
-                className="flex w-full items-start gap-2 px-3 py-1.5 text-left hover:bg-muted"
+                className={`flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-blue-50 ${i > 0 ? "border-t border-gray-50" : ""}`}
               >
-                <span className="font-mono text-xs text-blue-700 shrink-0 pt-0.5">{opt.code}</span>
-                <span className="text-xs text-gray-700 leading-tight">{opt.description}</span>
+                <span className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 font-mono text-[11px] font-bold text-blue-700">
+                  {opt.code}
+                </span>
+                <span className="flex-1 text-xs text-gray-700 leading-snug">{opt.description}</span>
                 {opt.level && (
-                  <span className="ml-auto text-[10px] text-gray-400 shrink-0">L{opt.level}</span>
+                  <span className="shrink-0 rounded bg-gray-100 px-1 py-0.5 text-[10px] text-gray-400">
+                    L{opt.level}
+                  </span>
                 )}
               </button>
             ))}
@@ -694,7 +740,8 @@ export function MedicalAdmissibilityTab({
                                 <IcdCombobox
                                   value={getICDLevel(i, row.conditionKey!, i === 0 ? row.icdCode : undefined)}
                                   onChange={(code, desc) => handleICDLevelChange(i, row.conditionKey!, code, desc)}
-                                  placeholder={`Code ${i + 1}`}
+                                  placeholder={`Search L${i + 1}…`}
+                                  levelLabel={`Level ${i + 1}`}
                                 />
                               </TableCell>
                             ))}
