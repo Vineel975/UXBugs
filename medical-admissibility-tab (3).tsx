@@ -158,13 +158,14 @@ async function fetchICDOptions(condition: string): Promise<IcdOption[]> {
 }
 
 // ── Searchable ICD Combobox ─────────────────────────────────────────────────
-// ── ICD Inline Search Input ────────────────────────────────────────────────
-// Replaces the small dropdown combobox with a clean inline search experience.
-// Shows code + description in a single input, opens a floating result list.
+// ── ICD Dropdown Combobox ────────────────────────────────────────────────────
+// Portal-based dropdown — renders outside the table so it never gets clipped.
+// Trigger button shows current code; click opens a search input + results list
+// anchored to the button position using fixed coordinates.
 function IcdCombobox({
   value,
   onChange,
-  placeholder = "Search code or name…",
+  placeholder = "Search…",
   levelLabel,
 }: {
   value: string;
@@ -172,43 +173,61 @@ function IcdCombobox({
   placeholder?: string;
   levelLabel?: string;
 }) {
+  const [open, setOpen]         = useState(false);
   const [query, setQuery]       = useState("");
   const [results, setResults]   = useState<IcdOption[]>([]);
-  const [open, setOpen]         = useState(false);
   const [loading, setLoading]   = useState(false);
   const [desc, setDesc]         = useState("");
-  const [focused, setFocused]   = useState(false);
-  const debounceRef             = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const wrapperRef              = useRef<HTMLDivElement>(null);
+  const [dropPos, setDropPos]   = useState({ top: 0, left: 0, width: 0 });
+  const triggerRef              = useRef<HTMLButtonElement>(null);
   const inputRef                = useRef<HTMLInputElement>(null);
+  const debounceRef             = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Fetch description for existing value
+  // Load description for current value
   useEffect(() => {
-    if (value) {
-      fetchICDDescription(value).then((d) => setDesc(d ?? ""));
-    } else {
-      setDesc("");
-    }
+    if (value) fetchICDDescription(value).then((d) => setDesc(d ?? ""));
+    else setDesc("");
   }, [value]);
 
-  // Close on outside click
+  // Position dropdown below trigger button using fixed coords
+  const openDropdown = () => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setDropPos({
+      top:   rect.bottom + window.scrollY + 4,
+      left:  rect.left   + window.scrollX,
+      width: Math.max(rect.width, 320),
+    });
+    setQuery("");
+    setResults([]);
+    setOpen(true);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  // Close on outside click or Escape
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setOpen(false);
-        setFocused(false);
-      }
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    const onMouse = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const portal = document.getElementById("icd-portal");
+      if (portal && portal.contains(target)) return;
+      if (triggerRef.current && triggerRef.current.contains(target)) return;
+      setOpen(false);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
+    document.addEventListener("mousedown", onMouse);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onMouse);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   const handleSearch = (q: string) => {
     setQuery(q);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!q.trim()) { setResults([]); setOpen(false); return; }
+    if (!q.trim()) { setResults([]); setLoading(false); return; }
     setLoading(true);
-    setOpen(true);
     debounceRef.current = setTimeout(async () => {
       const res = await searchIcdCodes(q);
       setResults(res);
@@ -219,105 +238,138 @@ function IcdCombobox({
   const handleSelect = (opt: IcdOption) => {
     onChange(opt.code, opt.description);
     setDesc(opt.description);
-    setQuery("");
-    setResults([]);
     setOpen(false);
-    setFocused(false);
   };
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
     onChange("", "");
     setDesc("");
-    setQuery("");
-    setResults([]);
   };
 
-  const displayValue = focused ? query : (value ? `${value}` : "");
+  // Portal dropdown rendered at fixed position — never clipped by overflow:hidden parents
+  const portal = typeof document !== "undefined"
+    ? document.getElementById("icd-portal") ?? (() => {
+        const el = document.createElement("div");
+        el.id = "icd-portal";
+        el.style.cssText = "position:absolute;top:0;left:0;z-index:9999;";
+        document.body.appendChild(el);
+        return el;
+      })()
+    : null;
 
-  return (
-    <div ref={wrapperRef} className="relative w-full">
-      {/* Level badge */}
-      {levelLabel && (
-        <div className="mb-0.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
-          {levelLabel}
-        </div>
-      )}
-
-      {/* Input row */}
-      <div className={`flex items-center rounded-md border ${focused ? "border-blue-400 ring-1 ring-blue-400/30" : value ? "border-blue-200 bg-blue-50" : "border-gray-200 bg-white"} transition-all`}>
+  const dropdown = open && portal ? (
+    <div
+      style={{ position: "absolute", top: dropPos.top, left: dropPos.left, width: dropPos.width, zIndex: 9999 }}
+      className="rounded-lg border border-gray-200 bg-white shadow-2xl overflow-hidden"
+    >
+      {/* Search input */}
+      <div className="flex items-center gap-2 border-b border-gray-100 px-3 py-2 bg-gray-50">
+        <svg className="h-3.5 w-3.5 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
         <input
           ref={inputRef}
           type="text"
-          value={displayValue}
+          value={query}
           onChange={(e) => handleSearch(e.target.value)}
-          onFocus={() => { setFocused(true); setQuery(""); }}
-          onBlur={() => { if (!open) setFocused(false); }}
-          placeholder={placeholder}
-          className="min-w-0 flex-1 bg-transparent px-2 py-1.5 text-xs outline-none placeholder:text-gray-300"
+          placeholder="Type ICD code or disease name…"
+          className="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-400"
         />
-        {value && !focused && (
-          <button
-            type="button"
-            onClick={handleClear}
-            title="Clear"
-            className="shrink-0 px-1.5 text-gray-300 hover:text-red-400 transition-colors"
-          >
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+        {query && (
+          <button type="button" onClick={() => { setQuery(""); setResults([]); inputRef.current?.focus(); }}
+            className="text-gray-300 hover:text-gray-500">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
           </button>
         )}
       </div>
 
-      {/* Description shown below when value is set and not focused */}
-      {value && !focused && desc && (
-        <div className="mt-0.5 truncate text-[10px] text-blue-600 leading-tight" title={desc}>
-          {desc}
-        </div>
-      )}
-
-      {/* Floating results dropdown */}
-      {open && (
-        <div className="absolute left-0 z-[100] mt-1 w-[340px] rounded-lg border border-gray-200 bg-white shadow-xl">
-          <div className="border-b border-gray-100 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-            ICD-10 Results
+      {/* Results */}
+      <div className="max-h-60 overflow-y-auto">
+        {!query && (
+          <div className="px-4 py-3 text-xs text-gray-400">
+            Start typing to search ICD-10 codes or disease names…
           </div>
-          <div className="max-h-52 overflow-y-auto">
-            {loading && (
-              <div className="flex items-center gap-2 px-3 py-3 text-xs text-gray-400">
-                <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-                </svg>
-                Searching…
-              </div>
-            )}
-            {!loading && results.length === 0 && query && (
-              <div className="px-3 py-3 text-xs text-gray-400">No results for &ldquo;{query}&rdquo;</div>
-            )}
-            {!loading && results.map((opt, i) => (
-              <button
-                key={opt.code}
-                type="button"
-                onMouseDown={(e) => e.preventDefault()} // prevent blur before click
-                onClick={() => handleSelect(opt)}
-                className={`flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-blue-50 ${i > 0 ? "border-t border-gray-50" : ""}`}
-              >
-                <span className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 font-mono text-[11px] font-bold text-blue-700">
-                  {opt.code}
-                </span>
-                <span className="flex-1 text-xs text-gray-700 leading-snug">{opt.description}</span>
-                {opt.level && (
-                  <span className="shrink-0 rounded bg-gray-100 px-1 py-0.5 text-[10px] text-gray-400">
-                    L{opt.level}
-                  </span>
-                )}
-              </button>
-            ))}
+        )}
+        {loading && (
+          <div className="flex items-center gap-2 px-4 py-3 text-xs text-gray-400">
+            <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+            </svg>
+            Searching…
           </div>
-        </div>
-      )}
+        )}
+        {!loading && query && results.length === 0 && (
+          <div className="px-4 py-3 text-xs text-gray-400">No results for &ldquo;{query}&rdquo;</div>
+        )}
+        {!loading && results.map((opt, i) => (
+          <button
+            key={opt.code}
+            type="button"
+            onClick={() => handleSelect(opt)}
+            className={`flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-blue-50 transition-colors ${i > 0 ? "border-t border-gray-50" : ""}`}
+          >
+            <span className="shrink-0 mt-0.5 rounded bg-blue-100 px-2 py-0.5 font-mono text-xs font-bold text-blue-700">
+              {opt.code}
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm text-gray-800 leading-snug">{opt.description}</div>
+              {opt.level && (
+                <div className="mt-0.5 text-[10px] text-gray-400">Level {opt.level}</div>
+              )}
+            </div>
+          </button>
+        ))}
+      </div>
     </div>
+  ) : null;
+
+  return (
+    <>
+      <div className="w-full">
+        {/* Trigger button — shows current value or placeholder */}
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={openDropdown}
+          className={`flex w-full items-center justify-between gap-1 rounded-md border px-2 py-1.5 text-left text-xs transition-colors hover:border-blue-300 hover:bg-blue-50 ${
+            value
+              ? "border-blue-200 bg-blue-50 text-blue-700"
+              : "border-gray-200 bg-white text-gray-400"
+          }`}
+        >
+          <span className="flex-1 truncate font-mono font-medium">
+            {value || placeholder}
+          </span>
+          <svg className="h-3 w-3 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </button>
+
+        {/* Description below button */}
+        {value && desc && (
+          <div className="mt-0.5 flex items-start justify-between gap-1">
+            <span className="truncate text-[10px] text-blue-500 leading-tight flex-1" title={desc}>
+              {desc}
+            </span>
+            <button type="button" onClick={handleClear}
+              className="shrink-0 text-gray-300 hover:text-red-400 transition-colors"
+              title="Clear">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Portal — renders outside table DOM to avoid overflow clipping */}
+      {portal && typeof window !== "undefined" && dropdown &&
+        require("react-dom").createPortal(dropdown, portal)
+      }
+    </>
   );
 }
 
@@ -740,8 +792,7 @@ export function MedicalAdmissibilityTab({
                                 <IcdCombobox
                                   value={getICDLevel(i, row.conditionKey!, i === 0 ? row.icdCode : undefined)}
                                   onChange={(code, desc) => handleICDLevelChange(i, row.conditionKey!, code, desc)}
-                                  placeholder={`Search L${i + 1}…`}
-                                  levelLabel={`Level ${i + 1}`}
+                                  placeholder={`L${i + 1} code`}
                                 />
                               </TableCell>
                             ))}
