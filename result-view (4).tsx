@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -138,7 +138,7 @@ export function ResultView({
   spectraFields,
 }: ResultViewProps) {
   const updateResult = useConvexMutation(api.processing.updateResult);
-  const pdfContainerRef = useRef<HTMLDivElement>(null);
+  const pdfContainerRef = useRef<HTMLDivElement | null>(null);
   const [pdfWidth, setPdfWidth] = useState<number>(800);
   const [activePdfFile, setActivePdfFile] = useState<
     "hospital" | "tariff" | "benefitPlan"
@@ -1374,7 +1374,7 @@ export function ResultView({
             hospitalBill={hospitalBill}
             tariffFile={tariffFile}
             claimId={state?.claimId}
-            pdfContainerRef={pdfContainerRef}
+            pdfContainerRef={pdfContainerRef as React.RefObject<HTMLDivElement>}
             onPdfWidthChange={handlePdfWidthChange}
             pdfPages={pdfPages}
             setPdfPages={setPdfPages}
