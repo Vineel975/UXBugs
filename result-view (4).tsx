@@ -152,6 +152,8 @@ export function ResultView({
   });
   // Per-page rotation state: key = pageIndex, value = 0|90|180|270
   const [pageRotations, setPageRotations] = useState<Record<number, number>>({});
+  // Tracks the last populated ICD code from the Diagnosis-Linked section
+  const [lastIcdCodeFromTab, setLastIcdCodeFromTab] = useState<string>("");
   const rotatePage = useCallback((pageIndex: number, direction: "cw" | "ccw") => {
     setPageRotations((prev) => ({
       ...prev,
@@ -793,6 +795,10 @@ export function ResultView({
         if (icdRes.ok) {
           const icdData = await icdRes.json() as { slots?: Array<{ code: string; description: string; level: number } | null> };
           const icdSlots = icdData.slots ?? [];
+
+          // Override with doctor-selected ICD code from Diagnosis-Linked section if available
+          const finalIcdCode = lastIcdCodeFromTab.trim() || undefined;
+
           window.parent.postMessage(
             {
               source:        "claimai",
@@ -801,6 +807,7 @@ export function ResultView({
               procedureHint,
               eligibleAmount,
               packageAmount,
+              lastIcdCode:   finalIcdCode, // explicit override — takes priority in Spectra
             },
             "*",
           );
@@ -1265,6 +1272,7 @@ export function ResultView({
                     onScrollToPage={handleScrollToPage}
                     presentingComplaint={presentingComplaint}
                     onPresentingComplaintChange={setPresentingComplaint}
+                    onLastIcdCodeChange={setLastIcdCodeFromTab}
                   />
                 </section>
                 <section id="financialSummary" className="py-2">
