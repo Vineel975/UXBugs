@@ -617,6 +617,15 @@ export function MedicalAdmissibilityTab({
       });
       setIcdLevels(newLevels);
 
+      // Notify parent of last populated ICD code from auto-population
+      if (onLastIcdCodeChange) {
+        let lastAutoCode = "";
+        for (let lvl = 6; lvl >= 0; lvl--) {
+          if (slots[lvl]?.code) { lastAutoCode = slots[lvl]!.code; break; }
+        }
+        if (lastAutoCode) onLastIcdCodeChange(lastAutoCode);
+      }
+
       // ── Build options map for search fallback ─────────────────────────────────
       const newOptionsMap = new Map<string, IcdOption[]>();
       await Promise.all(
