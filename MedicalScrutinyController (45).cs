@@ -8952,7 +8952,7 @@ namespace Enrollment.Controllers
                         int patientConditionIdInt = 269; // 269 = Recovered
                         if (!string.IsNullOrWhiteSpace(patientConditionId))
                             int.TryParse(patientConditionId.Trim(), out patientConditionIdInt);
-                        setClauses.Add("PatientConditionID = @PatientConditionID");
+                        setClauses.Add("MillimanConditionID = @PatientConditionID");
                         cmd.Parameters.AddWithValue("@PatientConditionID", patientConditionIdInt);
 
                         if (setClauses.Count == 0)
@@ -9226,7 +9226,7 @@ namespace Enrollment.Controllers
                     conn2.Open();
                     using (var cmd = conn2.CreateCommand())
                     {
-                        cmd.CommandText = @"SELECT TOP 1 DoctorNotes, ApprovedFacilityID, PatientConditionID
+                        cmd.CommandText = @"SELECT TOP 1 DoctorNotes, ApprovedFacilityID, MillimanConditionID
                                             FROM Claimsdetails
                                             WHERE ClaimID = @ClaimID AND ISNULL(Deleted,0) = 0
                                             ORDER BY SlNo DESC";
@@ -9239,8 +9239,8 @@ namespace Enrollment.Controllers
                                     doctorNotes = reader["DoctorNotes"].ToString().Trim();
                                 if (reader["ApprovedFacilityID"] != DBNull.Value)
                                     approvedFacilityId = reader["ApprovedFacilityID"].ToString().Trim();
-                                if (reader["PatientConditionID"] != DBNull.Value)
-                                    patientConditionId = reader["PatientConditionID"].ToString().Trim();
+                                if (reader["MillimanConditionID"] != DBNull.Value)
+                                    patientConditionId = reader["MillimanConditionID"].ToString().Trim();
                             }
                         }
                     }
