@@ -575,27 +575,54 @@ export function MedicalAdmissibilityTab({
           </div>
         ) : (
           <div className="space-y-4">
-              {medicalAdmissibility.diagnosis && (
+              {/* Diagnosis + Supporting Report 2-column table — replaces plain Diagnosis text */}
+              {(medicalAdmissibility.diagnosis || conditionRows.length > 0) && (
                 <div className="space-y-2">
-                  <div className="text-sm font-semibold text-gray-700">
-                    Diagnosis
-                  </div>
-                  <div
-                    className={`text-sm text-gray-900 bg-gray-50 rounded-md p-3 border ${
-                      onScrollToPage ? "cursor-pointer hover:bg-blue-50 transition-colors" : ""
-                    }`}
-                    title={onScrollToPage ? "Click to navigate to diagnosis in PDF" : undefined}
-                    onClick={() => {
-                      // Navigate to page 1 of the document for diagnosis context
-                      if (onScrollToPage) {
-                        onScrollToPage(1);
-                      }
-                    }}
-                  >
-                    {medicalAdmissibility.diagnosis}
-                    {onScrollToPage && (
-                      <span className="ml-2 text-xs text-blue-500">↗ View in PDF</span>
-                    )}
+                  <div className="text-sm font-semibold text-gray-700">Diagnosis</div>
+                  <div className="rounded-md border bg-white">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gray-50">
+                          <TableHead className="font-semibold text-gray-700 w-1/2">Diagnosis</TableHead>
+                          <TableHead className="font-semibold text-gray-700 w-1/2">Supporting Report</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {conditionRows.length > 0 ? (
+                          conditionRows.map((row, idx) => (
+                            <TableRow key={`diag-row-${idx}`}>
+                              <TableCell className="align-top w-1/2">
+                                <input
+                                  type="text"
+                                  defaultValue={`${row.condition}${row.matchedDiagnosis ? ` (${row.matchedDiagnosis})` : ""}`}
+                                  className="w-full rounded border border-gray-200 px-2 py-1 text-sm text-gray-800 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              </TableCell>
+                              <TableCell
+                                className="align-top w-1/2 cursor-pointer"
+                                onClick={() => onScrollToPage && row.pageNumber && onScrollToPage(row.pageNumber)}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm text-gray-700">{row.test}</span>
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                    row.reported === "Yes" ? "bg-green-100 text-green-800" : "bg-red-50 text-red-700"
+                                  }`}>
+                                    {row.reported === "Yes" ? "Available" : "Missing"}
+                                  </span>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={2} className="text-sm text-gray-700 p-3">
+                              {medicalAdmissibility.diagnosis}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
                   </div>
                 </div>
               )}
@@ -631,59 +658,44 @@ export function MedicalAdmissibilityTab({
                   <div className="text-sm font-semibold text-gray-700">
                     Diagnosis-Linked Supporting Investigations
                   </div>
-                  <div className="rounded-md border bg-white">
+                  <div className="rounded-md border bg-white overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-gray-50">
-                          <TableHead className="font-semibold text-gray-700">Diagnosis</TableHead>
-                          <TableHead className="font-semibold text-gray-700">Supporting Report</TableHead>
+                          {Array.from({ length: 7 }, (_, i) => (
+                            <TableHead key={i} className="min-w-[140px] font-semibold text-gray-700">{`ICD Code-${i + 1}`}</TableHead>
+                          ))}
+                          <TableHead className="font-semibold text-gray-700">Description</TableHead>
+                          <TableHead className="font-semibold text-gray-700">Reported</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {conditionRows.map((row, idx) => (
-                          <TableRow
-                            key={`condition-row-${idx}`}
-                            className={`${
-                              onScrollToPage && row.pageNumber
-                                ? "cursor-pointer hover:bg-blue-50 transition-colors"
-                                : ""
-                            }`}
-                          >
-                            {/* Diagnosis column — editable, shows condition + matched diagnosis */}
-                            <TableCell className="align-top w-1/2">
-                              <div className="space-y-1">
-                                <input
-                                  type="text"
-                                  defaultValue={`${row.condition}${row.matchedDiagnosis ? ` (${row.matchedDiagnosis})` : ""}`}
-                                  className="w-full rounded border border-gray-200 px-2 py-1 text-sm text-gray-800 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                                  onClick={(e) => e.stopPropagation()}
+                          <TableRow key={`icd-row-${idx}`} className={onScrollToPage && row.pageNumber ? "cursor-pointer hover:bg-gray-50" : ""}>
+                            {Array.from({ length: 7 }, (_, i) => (
+                              <TableCell key={i} className="align-top p-1">
+                                <IcdCombobox
+                                  value={getICDLevel(i, row.conditionKey!, i === 0 ? row.icdCode : undefined)}
+                                  onChange={(code, desc) => handleICDLevelChange(i, row.conditionKey!, code, desc)}
+                                  placeholder={`Code ${i + 1}`}
                                 />
-                              </div>
-                            </TableCell>
-                            {/* Supporting Report column — test name + reported status */}
-                            <TableCell
-                              className="align-top w-1/2"
-                              onClick={() => {
-                                if (onScrollToPage && row.pageNumber) {
-                                  onScrollToPage(row.pageNumber);
+                              </TableCell>
+                            ))}
+                            <TableCell className="align-top text-xs text-gray-600">
+                              {(() => {
+                                for (let lvl = 6; lvl >= 0; lvl--) {
+                                  const code = getICDLevel(lvl, row.conditionKey!);
+                                  if (code) return icdDescriptions.get(code) || code;
                                 }
-                              }}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-gray-700">{row.test}</span>
-                                <span
-                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                    row.reported === "Yes"
-                                      ? "bg-green-100 text-green-800"
-                                      : "bg-red-50 text-red-700"
-                                  }`}
-                                >
-                                  {row.reported === "Yes" ? "Available" : "Missing"}
-                                </span>
-                                {onScrollToPage && row.pageNumber && (
-                                  <span className="text-xs text-blue-500 ml-auto">Page {row.pageNumber}</span>
-                                )}
-                              </div>
+                                return "-";
+                              })()}
+                            </TableCell>
+                            <TableCell className="align-top" onClick={() => onScrollToPage && row.pageNumber && onScrollToPage(row.pageNumber)}>
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                row.reported === "Yes" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
+                              }`}>
+                                {row.reported}
+                              </span>
                             </TableCell>
                           </TableRow>
                         ))}
