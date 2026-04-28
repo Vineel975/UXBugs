@@ -1,3 +1,3 @@
-Type 'RefObject<HTMLDivElement | null>' is not assignable to type 'RefObject<HTMLDivElement>'.
-  Type 'HTMLDivElement | null' is not assignable to type 'HTMLDivElement'.
-    Type 'null' is not assignable to type 'HTMLDivElement'.
+
+[ClaimAI] ICD code for coding row: H25.11 (doctor selected)
+Index:16777 [ClaimAI] setIcdSlots: procID=496 icd=H25.11 eligible=20000 package=52000
