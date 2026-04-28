@@ -29,6 +29,8 @@ interface MedicalAdmissibilityTabProps {
   onScrollToPage?: (pageNumber: number) => void;
   presentingComplaint?: string;
   onPresentingComplaintChange?: (value: string) => void;
+  /** Called whenever doctor changes ICD codes — passes the last populated code */
+  onLastIcdCodeChange?: (code: string) => void;
 }
 
 type ConditionKey = string;
@@ -530,6 +532,7 @@ export function MedicalAdmissibilityTab({
   onScrollToPage,
   presentingComplaint,
   onPresentingComplaintChange,
+  onLastIcdCodeChange,
 }: MedicalAdmissibilityTabProps) {
   const [icdCodeMap, setIcdCodeMap] = useState<Map<string, string>>(new Map());
   // 7 levels of ICD codes per condition key
@@ -651,6 +654,29 @@ export function MedicalAdmissibilityTab({
     setIcdLevels((prev) => {
       const next = prev.map((m) => new Map(m));
       next[level].set(conditionKey, code);
+
+      // Find last populated code across all levels and all condition keys
+      let lastCode = "";
+      for (let lvl = 6; lvl >= 0; lvl--) {
+        for (const val of next[lvl].values()) {
+          if (val) { lastCode = val; break; }
+        }
+        if (lastCode) break;
+      }
+      // Also check newly entered code
+      if (code && level >= (lastCode ? 0 : 0)) {
+        // Walk from highest level down to find actual last
+        let found = "";
+        for (let lvl = 6; lvl >= 0; lvl--) {
+          const map = lvl === level
+            ? (() => { const m = new Map(next[lvl]); m.set(conditionKey, code); return m; })()
+            : next[lvl];
+          for (const val of map.values()) { if (val) { found = val; break; } }
+          if (found) break;
+        }
+        if (found) lastCode = found;
+      }
+      if (onLastIcdCodeChange) onLastIcdCodeChange(lastCode);
       return next;
     });
     if (code && desc) {
