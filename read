@@ -1,6 +1,3 @@
-SELECT mu.ClaimID, mu.Utilized, mu.Approved, mu.Blocked, ms.BPSIID
-FROM MemberUtilization mu
-JOIN MemberSI ms ON ms.ID = mu.MemberSIID
-JOIN Claims c ON c.MemberPolicyID = ms.MemberPolicyID
-WHERE c.ID = 26041406226
-AND ISNULL(mu.Deleted,0) = 0
+Type 'RefObject<HTMLDivElement | null>' is not assignable to type 'RefObject<HTMLDivElement>'.
+  Type 'HTMLDivElement | null' is not assignable to type 'HTMLDivElement'.
+    Type 'null' is not assignable to type 'HTMLDivElement'.
