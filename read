@@ -1,0 +1,3 @@
+Property 'matchedDiagnosis' does not exist on type 'ConditionRow'.ts(2339) - medical admissability tab
+
+Object literal may only specify known properties, and 'highlight' does not exist in type '{ id: DbGroupId; title: string; }'.ts(2353) - patient info tab.
