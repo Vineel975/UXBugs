@@ -367,7 +367,6 @@ export function ResultView({
 
     setActivePdfFile("tariff");
 
-    // Remove any previous highlights
     const clearHighlights = () => {
       document.querySelectorAll(".tariff-highlight").forEach((el) => {
         (el as HTMLElement).classList.remove("tariff-highlight");
@@ -379,107 +378,117 @@ export function ResultView({
       });
     };
 
-    setTimeout(() => {
-      if (!pdfContainerRef.current) return;
+    const normalize = (s: string) =>
+      s.replace(/,/g, "").replace(/\s+/g, " ").trim().toLowerCase();
 
+    const applyHighlight = (span: HTMLElement) => {
+      span.classList.add("tariff-highlight");
+      span.style.background = "rgba(251, 191, 36, 0.6)";
+      span.style.borderRadius = "2px";
+      span.style.padding = "1px 2px";
+      span.style.outline = "2px solid rgba(217, 119, 6, 0.7)";
+      span.style.outlineOffset = "1px";
+    };
+
+    // Use the inline `top` style that react-pdf sets on every span — works even
+    // when pages are off-screen (getBoundingClientRect would return 0 in that case).
+    const getSpanTop = (span: HTMLElement): number => {
+      const t = span.style.top;
+      if (t && t.endsWith("px")) return parseFloat(t);
+      return span.offsetTop;
+    };
+
+    const doHighlight = () => {
+      if (!pdfContainerRef.current) return;
       clearHighlights();
 
-      const pageElements =
-        pdfContainerRef.current.querySelectorAll("[data-page-number]");
+      // Locate the page wrapper div
+      const pageWrappers = pdfContainerRef.current.querySelectorAll("[data-page-number]");
+      let targetWrapper: HTMLElement | null = null;
+      for (const el of Array.from(pageWrappers)) {
+        const n = parseInt((el as HTMLElement).getAttribute("data-page-number") || "0");
+        if (n === pageNumber) { targetWrapper = el as HTMLElement; break; }
+      }
+      if (!targetWrapper) return;
 
-      for (const el of Array.from(pageElements)) {
-        const pageNum = parseInt(
-          (el as HTMLElement).getAttribute("data-page-number") || "0",
-        );
-        if (pageNum === pageNumber) {
-          (el as HTMLElement).scrollIntoView({
-            behavior: "smooth",
-            block: "start",
+      targetWrapper.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (!highlightText) return;
+
+      // Find the text layer — it lives inside the react-pdf Page, which is inside our wrapper
+      const textLayer = targetWrapper.querySelector(".react-pdf__Page__textContent");
+      if (!textLayer) return;
+
+      const textSpans = Array.from(textLayer.querySelectorAll("span")) as HTMLElement[];
+      if (textSpans.length === 0) return;
+
+      const normalizedAmount = normalize(highlightText);
+      const nameWords = highlightName
+        ? normalize(highlightName).split(" ").filter((w) => w.length > 2)
+        : [];
+
+      // Find all spans whose text matches the amount
+      const amountMatches: number[] = [];
+      textSpans.forEach((span, i) => {
+        const text = normalize(span.textContent || "");
+        if (
+          text &&
+          (text === normalizedAmount ||
+            text.includes(normalizedAmount) ||
+            (normalizedAmount.includes(text) && text.length > 2))
+        ) {
+          amountMatches.push(i);
+        }
+      });
+
+      if (amountMatches.length === 0) return;
+
+      // Pick best amount span: prefer the one whose row also contains a name word
+      let bestAmountIdx = amountMatches[0];
+      if (nameWords.length > 0 && amountMatches.length > 1) {
+        for (const amtIdx of amountMatches) {
+          const amtTop = getSpanTop(textSpans[amtIdx]);
+          const rowHasName = textSpans.some((s) => {
+            if (Math.abs(getSpanTop(s) - amtTop) > 4) return false;
+            const t = normalize(s.textContent || "");
+            return nameWords.some((w) => t.includes(w));
           });
-
-          if (highlightText) {
-            setTimeout(() => {
-              const normalize = (s: string) =>
-                s.replace(/,/g, "").replace(/\s+/g, " ").trim().toLowerCase();
-              const normalizedAmount = normalize(highlightText);
-              const normalizedName = highlightName ? normalize(highlightName) : null;
-
-              const textSpans = Array.from(
-                (el as HTMLElement).querySelectorAll(
-                  ".react-pdf__Page__textContent span",
-                ),
-              ) as HTMLElement[];
-
-              const applyHighlight = (span: HTMLElement) => {
-                span.classList.add("tariff-highlight");
-                span.style.background = "rgba(251, 191, 36, 0.6)";
-                span.style.borderRadius = "2px";
-                span.style.padding = "1px 2px";
-                span.style.outline = "2px solid rgba(217, 119, 6, 0.7)";
-                span.style.outlineOffset = "1px";
-              };
-
-              // Returns the Y-midpoint of a span using its bounding rect
-              const getMidY = (span: HTMLElement) => {
-                const rect = span.getBoundingClientRect();
-                return (rect.top + rect.bottom) / 2;
-              };
-
-              // Two spans are on the same visual row if their Y midpoints are within 6px
-              const onSameRow = (a: HTMLElement, b: HTMLElement) =>
-                Math.abs(getMidY(a) - getMidY(b)) < 6;
-
-              // Find all spans matching the amount text
-              const amountSpanIndices: number[] = [];
-              textSpans.forEach((span, i) => {
-                const text = normalize(span.textContent || "");
-                if (
-                  text &&
-                  (text === normalizedAmount ||
-                    text.includes(normalizedAmount) ||
-                    (normalizedAmount.includes(text) && text.length > 2))
-                ) {
-                  amountSpanIndices.push(i);
-                }
-              });
-
-              if (amountSpanIndices.length === 0) return;
-
-              // Pick the best amount span — prefer the one whose row also contains the name
-              let bestAmountIdx = amountSpanIndices[0];
-
-              if (normalizedName && amountSpanIndices.length > 1) {
-                const nameWords = normalizedName.split(" ").filter((w) => w.length > 3);
-                for (const amtIdx of amountSpanIndices) {
-                  const amtSpan = textSpans[amtIdx];
-                  // Check if any span on the same row matches the name
-                  const rowHasName = textSpans.some((s) => {
-                    if (!onSameRow(s, amtSpan)) return false;
-                    const t = normalize(s.textContent || "");
-                    return nameWords.some((w) => t.includes(w));
-                  });
-                  if (rowHasName) {
-                    bestAmountIdx = amtIdx;
-                    break;
-                  }
-                }
-              }
-
-              // Highlight every span on the same visual row as the best amount span
-              const anchorSpan = textSpans[bestAmountIdx];
-              const anchorY = getMidY(anchorSpan);
-              textSpans.forEach((span) => {
-                if (Math.abs(getMidY(span) - anchorY) < 6) {
-                  applyHighlight(span);
-                }
-              });
-            }, 600);
-          }
-
-          break;
+          if (rowHasName) { bestAmountIdx = amtIdx; break; }
         }
       }
-    }, 150);
+
+      // Highlight every span on the same row (same top ±4px) as the best amount span
+      const anchorTop = getSpanTop(textSpans[bestAmountIdx]);
+      textSpans.forEach((span) => {
+        if (Math.abs(getSpanTop(span) - anchorTop) <= 4) {
+          applyHighlight(span);
+        }
+      });
+    };
+
+    // Retry until the text layer is rendered. The tariff tab may need to render first.
+    const tryHighlight = (delay: number, retriesLeft: number) => {
+      setTimeout(() => {
+        if (!pdfContainerRef.current) return;
+        // Check if the target page's text layer exists and has spans
+        const pageWrappers = pdfContainerRef.current.querySelectorAll("[data-page-number]");
+        let ready = false;
+        for (const el of Array.from(pageWrappers)) {
+          const n = parseInt((el as HTMLElement).getAttribute("data-page-number") || "0");
+          if (n === pageNumber) {
+            const layer = el.querySelector(".react-pdf__Page__textContent");
+            if (layer && layer.querySelectorAll("span").length > 0) { ready = true; }
+            break;
+          }
+        }
+        if (ready) {
+          doHighlight();
+        } else if (retriesLeft > 0) {
+          tryHighlight(500, retriesLeft - 1);
+        }
+      }, delay);
+    };
+
+    tryHighlight(300, 8);
   };
 
   const formatAmountValue = (amount?: number | null) => {
