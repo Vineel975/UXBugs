@@ -419,7 +419,17 @@ export function ResultView({
                 span.style.outlineOffset = "1px";
               };
 
-              // Find all spans that contain the amount
+              // Returns the Y-midpoint of a span using its bounding rect
+              const getMidY = (span: HTMLElement) => {
+                const rect = span.getBoundingClientRect();
+                return (rect.top + rect.bottom) / 2;
+              };
+
+              // Two spans are on the same visual row if their Y midpoints are within 6px
+              const onSameRow = (a: HTMLElement, b: HTMLElement) =>
+                Math.abs(getMidY(a) - getMidY(b)) < 6;
+
+              // Find all spans matching the amount text
               const amountSpanIndices: number[] = [];
               textSpans.forEach((span, i) => {
                 const text = normalize(span.textContent || "");
@@ -435,50 +445,34 @@ export function ResultView({
 
               if (amountSpanIndices.length === 0) return;
 
-              // If only one amount match — highlight it directly
-              if (amountSpanIndices.length === 1) {
-                applyHighlight(textSpans[amountSpanIndices[0]]);
-                return;
-              }
+              // Pick the best amount span — prefer the one whose row also contains the name
+              let bestAmountIdx = amountSpanIndices[0];
 
-              // Multiple matches — try to find the one closest to the procedure name
-              if (normalizedName) {
-                // Find the index of a span whose text is part of the procedure name
-                let nameSpanIndex = -1;
+              if (normalizedName && amountSpanIndices.length > 1) {
                 const nameWords = normalizedName.split(" ").filter((w) => w.length > 3);
-
-                for (let i = 0; i < textSpans.length; i++) {
-                  const text = normalize(textSpans[i].textContent || "");
-                  if (
-                    text &&
-                    text.length > 2 &&
-                    nameWords.some((word) => text.includes(word))
-                  ) {
-                    nameSpanIndex = i;
+                for (const amtIdx of amountSpanIndices) {
+                  const amtSpan = textSpans[amtIdx];
+                  // Check if any span on the same row matches the name
+                  const rowHasName = textSpans.some((s) => {
+                    if (!onSameRow(s, amtSpan)) return false;
+                    const t = normalize(s.textContent || "");
+                    return nameWords.some((w) => t.includes(w));
+                  });
+                  if (rowHasName) {
+                    bestAmountIdx = amtIdx;
                     break;
                   }
                 }
-
-                if (nameSpanIndex >= 0) {
-                  // Pick the amount span with the smallest index distance to the name span
-                  let closestIdx = amountSpanIndices[0];
-                  let minDist = Math.abs(amountSpanIndices[0] - nameSpanIndex);
-
-                  for (const idx of amountSpanIndices) {
-                    const dist = Math.abs(idx - nameSpanIndex);
-                    if (dist < minDist) {
-                      minDist = dist;
-                      closestIdx = idx;
-                    }
-                  }
-
-                  applyHighlight(textSpans[closestIdx]);
-                  return;
-                }
               }
 
-              // Fallback — highlight all amount matches
-              amountSpanIndices.forEach((i) => applyHighlight(textSpans[i]));
+              // Highlight every span on the same visual row as the best amount span
+              const anchorSpan = textSpans[bestAmountIdx];
+              const anchorY = getMidY(anchorSpan);
+              textSpans.forEach((span) => {
+                if (Math.abs(getMidY(span) - anchorY) < 6) {
+                  applyHighlight(span);
+                }
+              });
             }, 600);
           }
 
